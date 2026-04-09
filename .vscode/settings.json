@@ -1,0 +1,10 @@
+{
+    "makefile.launchConfigurations": [
+        {
+            "cwd": "e:\\Documenten\\HPP\\HPP-Julia-Template",
+            "binaryPath": "e:\\Documenten\\HPP\\HPP-Julia-Template\\julia",
+            "binaryArgs": []
+        }
+    ],
+    "makefile.makePath": "make"
+}
