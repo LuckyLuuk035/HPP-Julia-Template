@@ -32,7 +32,35 @@ inline constexpr pixel COLOURISE(double iter) {
 }
 
 void renderFrame(animation &frames, unsigned int t, unsigned int offset) {
-  // TODO - render frame t and store in frames[t-offset]
+  // constante
+  double a = 2 * std::numbers::pi * t / CYCLE_FRAMES;
+  double r = 0.7885;
+  std::complex<double> c = r * cos(a) + static_cast<std::complex<double>>(1i) * r * sin(a);
+
+  double x_y_range = 2;
+
+  //double scale = 1.5 - 1.45 * t / FRAMES;                           // iets simpeler
+  double scale = 1.5 - 1.45 * log(1 + 9.0 * t / FRAMES) / log(10);    // iets interessanter om naar te kijken
+
+  // Loop over elke pixel.
+  for (unsigned int x = 0; x < WIDTH; x++) {
+    for (unsigned int y = 0; y < HEIGHT; y++){
+      // Bepaal startwaarde z
+      std::complex<double> z = 2 * x_y_range * std::complex(static_cast<double>(x)/WIDTH, static_cast<double>(y)/HEIGHT) - std::complex(x_y_range*3/4, x_y_range);
+      z *= scale;
+      unsigned int iter = 0;
+      // Gebruiken abs(z) aangezien het getal tussen de 0 en 2 moet zitten ipv alleen lager dan 2.
+      while (std::abs(z) < x_y_range && iter < MAX_ITER) {
+        z = z*z + c;
+        iter++;
+      }
+      // Kleur wordt bepaald aan de hand van onderstaande check.
+      pixel colour = (iter == MAX_ITER) ? pixel{0, 0, 0} : COLOURISE(iter); // als iter = MAX_ITER, kleur is zwart anders -> COLOURISE iter 
+      frames[t - offset].set_colour(x, y, colour);
+    }
+  }
+
+
 }
 
 int main (int argc, char *argv[]) {
