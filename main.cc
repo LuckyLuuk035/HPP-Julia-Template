@@ -43,6 +43,7 @@ void renderFrame(animation &frames, unsigned int t, unsigned int offset) {
   double scale = 1.5 - 1.45 * log(1 + 9.0 * t / FRAMES) / log(10);    // iets interessanter om naar te kijken
 
   // Loop over elke pixel.
+  #pragma omp parallel for collapse(2)
   for (unsigned int x = 0; x < WIDTH; x++) {
     for (unsigned int y = 0; y < HEIGHT; y++){
       // Bepaal startwaarde z
@@ -64,30 +65,58 @@ void renderFrame(animation &frames, unsigned int t, unsigned int offset) {
 }
 
 int main (int argc, char *argv[]) {
+  // Variabelen aanmaken
+  int id = -1, numProcesses = -1;
+  unsigned int start = 0, stop = 0;
+
   MPI_Init(&argc, &argv);
+
+  MPI_Comm_rank(MPI_COMM_WORLD, &id);
+  MPI_Comm_size(MPI_COMM_WORLD, &numProcesses);
 
   // Needed to send frames over MPI
   MPI_Datatype mpi_img;
   MPI_Type_contiguous(FRAME_SIZE, MPI_BYTE, &mpi_img);
   MPI_Type_commit(&mpi_img);
 
-  animation frames(FRAMES);
+  // Aangezien het 750 frames zijn blijven deze exact deelbaar door het aantal processes.
+  start = id * (FRAMES / numProcesses);
+  stop = (id + 1) * (FRAMES / numProcesses);
+  unsigned chunksize = stop - start;
+  
+  // Aangepast naar local frames met chunksize
+  animation local_frames(chunksize);
 
-  // TODO - parallellisation
-  for (unsigned int f = 0; f < FRAMES; f++) {
-    cout << endl << "Rendering frame " << f << endl;
-    renderFrame(frames, f, 0);
+  for (unsigned int f = start; f < stop; f++) {
+    // cout << endl << "Rendering frame " << f << endl;
+    cout << id << "Rendering frame " << f << endl;
+    renderFrame(local_frames, f, start); // Start is de offset om bij renderFrame de correcte lokale index te hebben
   }
 
-  cimg_library::CImg<byte> img(WIDTH,HEIGHT,FRAMES,3);
-  cimg_forXYZ(img, x, y, z) { 
-    img(x,y,z,RED) = (frames)[z].get_channel(x,y,RED);
-    img(x,y,z,GREEN) = (frames)[z].get_channel(x,y,GREEN);
-    img(x,y,z,BLUE) = (frames)[z].get_channel(x,y,BLUE);
-  }
+  // De eerste batch verzameld alle frames en maakt de animatie.
+  // Dit is basicly het bakje waar de data uit andere processen in komen te vallen.
+  animation frames;
+  if (id == 0) frames.initialise(FRAMES);
 
-  std::string filename = std::string("animation.avi");
-  img.save_video(filename.c_str());
+  MPI_Gather(
+    local_frames.data(), chunksize, mpi_img,  // start adress, aantal elementen en datatype
+    frames.data(), chunksize, mpi_img,        // ontvangend adress, aantal elementen en datatype
+    0, MPI_COMM_WORLD                         // root en communicator
+  );
+
+
+  // alleen in eerste chunck de video opslaan.
+  if (id == 0) {
+    cimg_library::CImg<byte> img(WIDTH,HEIGHT,FRAMES,3);
+    cimg_forXYZ(img, x, y, z) { 
+      img(x,y,z,RED) = (frames)[z].get_channel(x,y,RED);
+      img(x,y,z,GREEN) = (frames)[z].get_channel(x,y,GREEN);
+      img(x,y,z,BLUE) = (frames)[z].get_channel(x,y,BLUE);
+    }
+
+    std::string filename = std::string("animation.avi");
+    img.save_video(filename.c_str());
+  }
 
   // Also needed to send frames over MPI
   MPI_Type_free(&mpi_img);

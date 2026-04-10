@@ -14,7 +14,8 @@ julia: main.cc frame.o animation.o consts.h
 	mpic++ -O2 $(LDFLAGS) -o julia main.cc frame.o animation.o --std=c++23
 
 run: ffmpeg julia
-	mpiexec -n $(or $(NP),4) ./julia.exe
+# 	mpiexec -n $(or $(NP),4) ./julia.exe
+	mpiexec -n 6 ./julia.exe
 
 help:
 	@echo "Use \`make\` to build and \`make run\` to execute on 4 processes (default). Use \`make run NP=2\` to choose the number of processes."
