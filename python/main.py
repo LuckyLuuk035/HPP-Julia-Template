@@ -13,13 +13,36 @@ v_no_openmp = df.iloc[1::2]
 def plot_totale_tijd():
     # Plot lijnen met en zonder OpenMP
     plt.plot(df_openmp['aantal cores'], df_openmp['tijd totaal'],
-             marker='x', label='Met OpenMP')
+             marker='x', color='red', label='Met OpenMP')
     plt.plot(df_no_openmp['aantal cores'], df_no_openmp['tijd totaal'],
-             marker='x', label='Zonder OpenMP')
+             marker='x', color='orangered', label='Zonder OpenMP')
+    plt.fill_between(df_openmp['aantal cores'],
+                     df_openmp['tijd totaal'],
+                     df_no_openmp['tijd totaal'],
+                     alpha=0.2, color='lightsalmon')
     # Labels en titel
     plt.xlabel('Aantal cores')
     plt.ylabel('Tijd totaal (s)')
-    plt.title('Performance vergelijking OpenMP vs Zonder OpenMP')
+    plt.title('Performance vergelijking Totale tijd OpenMP vs Zonder OpenMP')
+    plt.legend()
+
+    plt.show()
+
+def plot_berekening_tijd():
+    # Plot bereken pixel tijd lijnen met en zonder OpenMP
+    plt.plot(df_openmp['aantal cores'], df_openmp['bereken tijd'],
+             marker='+',color='green', label='Met OpenMP')
+    plt.plot(df_no_openmp['aantal cores'], df_no_openmp['bereken tijd'],
+             marker='+', color='forestgreen', label='Zonder OpenMP')
+    plt.fill_between(df_openmp['aantal cores'],
+                     df_openmp['bereken tijd'],
+                     df_no_openmp['bereken tijd'],
+                     alpha=0.2, color='limegreen')
+
+    # Labels en titel
+    plt.xlabel('Aantal cores')
+    plt.ylabel('Tijd totaal (s)')
+    plt.title('Performance vergelijking Bereken tijd OpenMP vs Zonder OpenMP')
     plt.legend()
 
     plt.show()
@@ -37,22 +60,33 @@ def plot_alles():
 
     # Plot bereken pixel tijd lijnen met en zonder OpenMP
     plt.plot(df_openmp['aantal cores'], df_openmp['bereken tijd'],
-             marker='+', label='Bereken tijd - Met OpenMP')
+             marker='+', color='green', label='Met OpenMP')
     plt.plot(df_no_openmp['aantal cores'], df_no_openmp['bereken tijd'],
-             marker='+', label='Bereken tijd - Zonder OpenMP')
+             marker='+', color='forestgreen', label='Zonder OpenMP')
+    plt.fill_between(df_openmp['aantal cores'],
+                     df_openmp['bereken tijd'],
+                     df_no_openmp['bereken tijd'],
+                     alpha=0.2, color='limegreen')
 
     # Plot totale tijd lijnen met en zonder OpenMP
     plt.plot(df_openmp['aantal cores'], df_openmp['tijd totaal'],
-             marker='x', label='Totale tijd - Met OpenMP')
+             marker='x', color='red', label='Met OpenMP')
     plt.plot(df_no_openmp['aantal cores'], df_no_openmp['tijd totaal'],
-             marker='x', label='Totale tijd - Zonder OpenMP')
+             marker='x', color='orangered', label='Zonder OpenMP')
+    plt.fill_between(df_openmp['aantal cores'],
+                     df_openmp['tijd totaal'],
+                     df_no_openmp['tijd totaal'],
+                     alpha=0.2, color='lightsalmon')
+
     # Labels en titel
     plt.xlabel('Aantal cores')
     plt.ylabel('Tijd totaal (s)')
-    plt.title('Performance vergelijking OpenMP vs Zonder OpenMP')
+    plt.title('Vergelijking van alle metingen')
     plt.legend()
 
     plt.show()
 
 if __name__ == '__main__':
+    plot_totale_tijd()
+    plot_berekening_tijd()
     plot_alles()
