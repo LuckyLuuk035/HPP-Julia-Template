@@ -32,7 +32,7 @@ inline constexpr pixel COLOURISE(double iter) {
 }
 
 void renderFrame(animation &frames, unsigned int t, unsigned int offset) {
-  // constante
+  // Constante
   double a = 2 * std::numbers::pi * t / CYCLE_FRAMES;
   double r = 0.7885;
   std::complex<double> c = r * cos(a) + static_cast<std::complex<double>>(1i) * r * sin(a);
@@ -42,8 +42,8 @@ void renderFrame(animation &frames, unsigned int t, unsigned int offset) {
   //double scale = 1.5 - 1.45 * t / FRAMES;                           // iets simpeler
   double scale = 1.5 - 1.45 * log(1 + 9.0 * t / FRAMES) / log(10);    // iets interessanter om naar te kijken
 
-  // Loop over elke pixel.
-  #pragma omp parallel for collapse(2)
+  // Loop over elke pixel. (waarbij elke pixel een chunk is)
+  #pragma omp parallel for collapse(2) schedule(dynamic) 
   for (unsigned int x = 0; x < WIDTH; x++) {
     for (unsigned int y = 0; y < HEIGHT; y++){
       // Bepaal startwaarde z
@@ -60,14 +60,15 @@ void renderFrame(animation &frames, unsigned int t, unsigned int offset) {
       frames[t - offset].set_colour(x, y, colour);
     }
   }
-
-
 }
 
 int main (int argc, char *argv[]) {
   // Variabelen aanmaken
   int id = -1, numProcesses = -1;
   unsigned int start = 0, stop = 0;
+
+  // Timing voor analyse
+  double start_time = 0.0, rendering_time = 0.0, total_time = 0.0;
 
   MPI_Init(&argc, &argv);
 
@@ -84,14 +85,20 @@ int main (int argc, char *argv[]) {
   stop = (id + 1) * (FRAMES / numProcesses);
   unsigned chunksize = stop - start;
   
-  // Aangepast naar local frames met chunksize
+  // Aangepast naar local frames met chunksize.
   animation local_frames(chunksize);
+
+  // begin met timen voor de loop.
+  start_time = MPI_Wtime();
 
   for (unsigned int f = start; f < stop; f++) {
     // cout << endl << "Rendering frame " << f << endl;
-    cout << id << "Rendering frame " << f << endl;
+    // cout << id << "Rendering frame " << f << endl; // Debugging voor MPI
     renderFrame(local_frames, f, start); // Start is de offset om bij renderFrame de correcte lokale index te hebben
   }
+
+  // Timing ophalen van alleen het renderen.
+  rendering_time = MPI_Wtime() - start_time;
 
   // De eerste batch verzameld alle frames en maakt de animatie.
   // Dit is basicly het bakje waar de data uit andere processen in komen te vallen.
@@ -104,8 +111,7 @@ int main (int argc, char *argv[]) {
     0, MPI_COMM_WORLD                         // root en communicator
   );
 
-
-  // alleen in eerste chunck de video opslaan.
+  // Alleen in eerste chunck de video opslaan.
   if (id == 0) {
     cimg_library::CImg<byte> img(WIDTH,HEIGHT,FRAMES,3);
     cimg_forXYZ(img, x, y, z) { 
@@ -116,6 +122,11 @@ int main (int argc, char *argv[]) {
 
     std::string filename = std::string("animation.avi");
     img.save_video(filename.c_str());
+
+    // Timing ophalen van totale proces
+    total_time = MPI_Wtime() - start_time;
+    // cout << "Totale duur was: " << total_time << " seconden, de tijd voor het renderen duurde: " << rendering_time << endl;
+    cout << total_time << " | " << rendering_time << endl;
   }
 
   // Also needed to send frames over MPI
